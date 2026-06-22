@@ -84,3 +84,24 @@ Copy `CLAUDE.md` to `~/.claude/CLAUDE.md` (global, applies to all projects) or t
 ```bash
 cp CLAUDE.md ~/.claude/CLAUDE.md
 ```
+
+## Enforcement (make the rules active, not just present)
+
+A `CLAUDE.md` is *advisory* — loaded into context but easy to drift from. Back it with mechanical layers so the rules are obeyed and re-checked every session:
+
+1. **`settings.json` defaults (mechanical).** Pin the model and subagent tier so cost discipline doesn't depend on memory:
+   ```json
+   {
+     "model": "opusplan",
+     "fallbackModel": ["claude-opus-4-8"],
+     "effortLevel": "medium",
+     "env": { "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet" }
+   }
+   ```
+   `CLAUDE_CODE_SUBAGENT_MODEL` forces every subagent / Workflow `agent()` spawn onto Sonnet regardless of the main model — the single biggest cost lever.
+
+2. **SessionStart hook (every session).** Inject a condensed rules reminder as `additionalContext` so each new/resumed session actively confirms adherence rather than passively loading the file.
+
+3. **Stop hook (on code changes).** Before a "done" response, re-surface the quality checklist (diff-review, real-output verification, scope discipline) — fires only when the turn changed code.
+
+Together: settings enforce the cheap defaults, SessionStart re-states the rules, and Stop gates quality at the finish line.
