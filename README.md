@@ -37,6 +37,16 @@ Pricing reference (per 1M tokens, in/out): Haiku $1/$5 · Sonnet $3/$15 · Opus 
 
 ---
 
+## Session & Subagent Cost Hygiene
+
+Usage telemetry shows the real spend drivers are *structural*, not per-token:
+
+1. **Subagent model is enforced, not remembered.** Subagents inherit the main-loop model unless told otherwise — a fan-out from an Opus session spawns N Opus agents. Always set `model: 'sonnet'` (or `'haiku'` for pure grunt work) on every `agent()` opts; reserve Opus for the single hard verify/judge stage. This is the biggest lever — subagent-heavy sessions dominate usage, and the Workflow tool's `agent()` spawns are the "workflow-subagent" usage line.
+2. **Context discipline.** `/clear` when switching to an unrelated task; `/compact` once a single task pushes past ~150k tokens. Long sessions are expensive even when cached.
+3. **Long & parallel sessions are intentional, not ambient.** Background/loop sessions (8+ hours) and 4+ parallel sessions all draw on **one shared rate limit** — parallelism doesn't buy more quota, it drains it faster. Time-box background work; queue sequential sessions over running many at once.
+
+---
+
 ## Quality & Verification
 
 Before reporting a task done:
