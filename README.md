@@ -19,6 +19,16 @@ Claude Code does not auto-pick a model per task, so the cost floor is set by the
 
 **Workflow subagents:** always pass `model: 'sonnet'` + `effort: 'medium'` on `agent()` opts for feature-work fan-outs. Reserve Opus/high only for the genuinely hard verify/judge stage.
 
+**`opusplan` is the practical default** for sessions that mix design and coding: it runs Opus in plan mode (reasoning/architecture) and **auto-switches to Sonnet for execution**, so the escalation is decided per-phase rather than by hand. Set it in `~/.claude/settings.json` (`"model": "opusplan"`) — the `/model` slash command is **not available in the VSCode extension** (use the model picker by the input box there).
+
+**529 / overload is not a capability problem.** A weak model never *errors* on a hard task — it gives a worse answer. If a request errors and "goes away when you bump to Opus," it's because Opus and Sonnet have **separate rate-limit/capacity buckets** and you switched to a less-congested one — not because the task needed a bigger model. 529 Overloaded is Anthropic-wide capacity (not your quota) and is auto-retried up to ~10× before you see it. Don't escalate to dodge a 529; set a `fallbackModel` array so Claude Code auto-switches buckets for the congested turn and returns:
+
+```json
+"fallbackModel": ["claude-opus-4-8"]
+```
+
+There is **no** built-in difficulty-based auto-downgrade — the model is fixed per session until changed; this tiered discipline *is* the routing.
+
 **Caching hygiene:** switch tiers only at task boundaries — a mid-task model switch invalidates the prompt cache. Keep the top of `CLAUDE.md`/`MEMORY.md` stable.
 
 **Per-project overrides:** repos carrying hard reasoning in every session (architecture, regulatory, biomechanics) default to Opus via `.claude/settings.local.json`. Sonnet-default projects can still escalate with `/model opus` for a single hard task.

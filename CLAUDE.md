@@ -23,6 +23,21 @@ decision").
 feature-work fan-outs. Reserve Opus/high only for the genuinely hard verify/judge stage. A fan-out
 on opus[1m] spawns N Opus[1m] agents and can exhaust the session limit mid-run.
 
+**`opusplan` is the practical default** for sessions that mix design and coding. It runs Opus while in
+plan mode (reasoning/architecture) and **auto-switches to Sonnet for execution** — the escalation
+decision is made per-phase, so you don't manage it by hand. Set it in `~/.claude/settings.json`
+(`"model": "opusplan"`), not via `/model` — the `/model` slash command is **not available in the
+VSCode extension** (use the model picker by the input box there, or just set settings.json once).
+
+**529 / overload is NOT a capability problem.** A weak model never *errors* on a hard task — it just
+gives a worse answer. If a request errors and "goes away when you bump to Opus," that's because Opus
+and Sonnet have **separate rate-limit/capacity buckets** and you jumped to a less-congested one — not
+because the task needed a bigger model. 529 Overloaded is Anthropic-wide capacity, not your quota, and
+is auto-retried up to ~10× before you ever see it. **Don't escalate to dodge a 529.** Instead set a
+`fallbackModel` (array) in settings.json so Claude Code auto-switches buckets for the congested turn
+and returns: `"fallbackModel": ["claude-opus-4-8"]`. There is **no** built-in difficulty-based
+auto-downgrade — the model is fixed per session until changed; this tiered discipline IS the routing.
+
 **Caching hygiene** (free savings): switch tiers only at *task boundaries* (a mid-task model switch
 invalidates the prompt cache). Keep the top of `CLAUDE.md`/`MEMORY.md` stable — a change near the
 top re-bills the entire prefix.
