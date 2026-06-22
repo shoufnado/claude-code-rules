@@ -28,6 +28,10 @@ plan mode (reasoning/architecture) and **auto-switches to Sonnet for execution**
 decision is made per-phase, so you don't manage it by hand. Set it in `~/.claude/settings.json`
 (`"model": "opusplan"`), not via `/model` — the `/model` slash command is **not available in the
 VSCode extension** (use the model picker by the input box there, or just set settings.json once).
+Note: opusplan is strictly **two-model (Opus + Sonnet)** — it **never** routes to Haiku, and no
+built-in main-loop model spans all three tiers. Haiku enters only via subagents (below) or a manual
+pick for a trivially cheap session. Use the plain `opusplan` alias, **not** a `[1m]` variant — the
+1M context window re-bills the whole history every turn.
 
 **529 / overload is NOT a capability problem.** A weak model never *errors* on a hard task — it just
 gives a worse answer. If a request errors and "goes away when you bump to Opus," that's because Opus
@@ -55,11 +59,16 @@ Pricing reference (per 1M tokens, in/out): Haiku $1/$5 · Sonnet $3/$15 · Opus 
 Usage telemetry shows the real spend drivers are *structural*, not per-token. Address them:
 
 1. **Subagent model is enforced, not remembered.** Subagents inherit the main-loop model unless told
-   otherwise — so a fan-out from an Opus session spawns N Opus agents. ALWAYS set `model: 'sonnet'`
-   (or `'haiku'` for pure grunt work: reads, greps, status) on every `agent()` opts. Reserve Opus for
-   the single hard verify/judge stage only. This is the biggest lever — subagent-heavy sessions
-   dominate usage. The Workflow tool's `agent()` spawns are the "workflow-subagent" usage line; the
-   same rule governs them.
+   otherwise — so a fan-out from an Opus session spawns N Opus agents. The global cap
+   `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` (set in settings.json `env`) forces **every** subagent —
+   Task/Agent spawns and Workflow `agent()` spawns — onto Sonnet. ⚠️ This env var **overrides** both
+   per-agent `model:` frontmatter and per-call `model:` opts, so it is all-or-nothing: it cannot tier
+   "Haiku for grunt work, Sonnet for substantive work." The Sonnet cap is the deliberate 80/20 — it
+   kills the expensive Opus-subagent blowups (the dominant usage driver) and Sonnet is already cheap.
+   To get true 3-tier routing (Haiku on Explore/grunt agents, Sonnet elsewhere) you must set
+   `CLAUDE_CODE_SUBAGENT_MODEL=inherit` **and** pin `model:` in each agent definition — more setup and
+   more fragile (an unpinned agent then inherits the main loop, i.e. Opus during plan mode). The
+   Workflow tool's `agent()` spawns are the "workflow-subagent" usage line; the same cap governs them.
 
 2. **Context discipline.** Long sessions are expensive even when cached. `/clear` when switching to an
    unrelated task; `/compact` once a single task pushes past ~150k tokens. Don't let one session
